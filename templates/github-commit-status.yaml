@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: github-commit-status
+spec:
+  entrypoint: set-github-commit-status
+  templates:
+  - name: set-github-commit-status
+    inputs:
+      parameters:
+      - name: context
+      - name: repo
+      - name: state
+      - name: url
+      - name: commit
+      - nanm: ghUrl
+        value: https://github.com/api/v3
+      - name: ghTokenSecret
+      - name: ghTokenSecretKey
+        value: GH_TOKEN
+    container:
+      image: curlimages/curl
+      command: [sh, "-c"]
+      env:
+      - name: GH_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: "{{inputs.parameters.ghTokenSecret}}"
+            key: "{{inputs.parameters.ghTokenSecretKey}}"
+      args:
+        - >
+          curl -X POST -L -H "Authorization: token $GH_TOKEN" \
+            -d '{"state": "{{inputs.parameters.state}}", "target_url": "{{inputs.parameters.url}}", "context": "{{inputs.parameters.context}}"}' \
+            "{{inputs.parameters.ghUrl}}/repos/{{inputs.parameters.repo}}/statuses/{{inputs.parameters.commit}}"

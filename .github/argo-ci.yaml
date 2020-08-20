@@ -1,0 +1,44 @@
+builds:
+  - branches:
+      - master
+    pullRequests:
+      allowForks: true
+    workflow:
+      source: |
+        apiVersion: argoproj.io/v1alpha1
+        kind: Workflow
+        metadata:
+          generateName: volumes-existing-
+        spec:
+          entrypoint: volumes-existing-example
+          volumes:
+          - name: workdir
+            persistentVolumeClaim:
+              claimName: my-existing-volume
+
+          templates:
+          - name: volumes-existing-example
+            steps:
+            - - name: generate
+                template: append-to-accesslog
+            - - name: print
+                template: print-accesslog
+
+          - name: build
+            container:
+              image: golang:1.14
+              volumeMounts:
+              - name: workdir
+                mountPath: /mnt/vol
+              source: |
+                make lint
+                make build
+
+          - name: print-accesslog
+            container:
+              image: alpine:latest
+              command: [sh, -c]
+              args: ["echo 'Volume access log:'; cat /mnt/vol/accesslog"]
+              volumeMounts:
+              - name: workdir
+                mountPath: /mnt/vol
